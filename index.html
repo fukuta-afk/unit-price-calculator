@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="asset-version" content="1.0.2">
+<meta name="theme-color" content="#1f6f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="単価比較">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<title>単価比較電卓</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+    color: #1d2327;
+    background: #f2f4f3;
+    overflow-x: hidden;
+  }
+  main {
+    max-width: 480px;
+    margin: 0 auto;
+    padding:
+      calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+      calc(20px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+  }
+  h1 { font-size: 1.35rem; margin: 4px 0 12px; }
+  .panel {
+    background: #fff;
+    border: 1px solid #d5dbd8;
+    border-radius: 12px;
+    padding: 12px;
+    margin: 0 0 12px;
+    min-width: 0;
+  }
+  fieldset.panel { margin-inline: 0; }
+  legend { font-weight: 700; padding: 0 4px; }
+  .kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .kinds label {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 48px; padding: 4px 6px;
+    border: 1px solid #b9c3bf; border-radius: 10px; background: #fafbfb;
+    font-size: 17px; cursor: pointer;
+  }
+  .kinds input { width: 20px; height: 20px; margin: 0; accent-color: #1f6f5c; flex: none; }
+  .kinds label:has(input:checked) { border-color: #1f6f5c; background: #e3f1ec; font-weight: 700; }
+  .card { position: relative; }
+  .card h2 { font-size: 1.15rem; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    display: inline-block; font-size: 16px; font-weight: 700; color: #fff;
+    background: #b5401f; border-radius: 999px; padding: 2px 10px;
+  }
+  .badge[hidden] { display: none; }
+  .card.winner { border: 3px solid #b5401f; background: #fff6f2; padding: 10px; }
+  .field { margin: 0 0 10px; min-width: 0; }
+  .field > label, .unit-row > div > label, .unit-title { display: block; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  input[type="text"], select {
+    width: 100%; min-width: 0; min-height: 48px;
+    font-size: 18px; font-family: inherit; color: inherit;
+    padding: 8px 10px; border: 1px solid #8c9894; border-radius: 8px; background: #fff;
+  }
+  select { appearance: auto; }
+  input[aria-invalid="true"] { border: 2px solid #c0272d; background: #fff5f5; }
+  input:focus, select:focus, button:focus-visible, .kinds input:focus-visible { outline: 3px solid #2b7bd8; outline-offset: 1px; }
+  .unit-row { display: grid; grid-template-columns: minmax(0, 1fr) 6.5em; gap: 8px; align-items: start; }
+  .unit-fixed {
+    display: flex; align-items: center; min-height: 48px; padding: 0 10px;
+    font-size: 18px; border: 1px dashed #b9c3bf; border-radius: 8px; background: #f7f8f8;
+  }
+  .unit-fixed[hidden], select[hidden] { display: none; }
+  .msg { font-size: 16px; margin: 4px 0 0; min-height: 1.5em; overflow-wrap: anywhere; word-break: break-word; }
+  .msg.hint { color: #5f6b67; }
+  .msg.error { color: #b3141b; font-weight: 700; }
+  .unit-price {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+    margin: 4px 0 10px; padding: 8px 10px; border-radius: 8px; background: #f2f4f3;
+  }
+  .unit-price .label { font-size: 16px; color: #3d4744; }
+  .unit-price .value { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; word-break: break-all; min-width: 0; }
+  button {
+    font-family: inherit; font-size: 17px; min-height: 48px; min-width: 44px;
+    padding: 8px 16px; border-radius: 10px; border: 1px solid #8c9894; background: #fff; color: #1d2327; cursor: pointer;
+  }
+  .card button { width: 100%; }
+  .result { text-align: center; }
+  .result h2 { font-size: 1rem; margin: 0 0 4px; color: #3d4744; }
+  .verdict { font-size: 22px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+  .result.pending .verdict { font-size: 17px; font-weight: 600; color: #3d4744; }
+  .result.decided { border: 3px solid #b5401f; background: #fff6f2; }
+  .result.decided .verdict { color: #9a3313; }
+  .result.same { border: 3px solid #1f6f5c; background: #eef7f3; }
+  .result.same .verdict { color: #1f6f5c; }
+  .detail { font-size: 16px; margin: 4px 0 0; overflow-wrap: anywhere; word-break: break-all; }
+  .detail:empty { display: none; }
+  #clear-all { width: 100%; margin: 0 0 12px; background: #eef1f0; font-weight: 700; }
+  .status { font-size: 16px; margin: 0; padding: 10px 12px; border-radius: 10px; overflow-wrap: anywhere; background: #e9ecea; color: #3d4744; }
+  .status-ready { background: #e3f1ec; color: #155244; }
+  .status-failed { background: #fdecec; color: #8f1219; }
+  .status-unsupported { background: #fdf5e1; color: #6b4b00; }
+</style>
+</head>
+<body>
+<main>
+  <h1>単価比較電卓</h1>
+
+  <form id="calc-form" autocomplete="off" novalidate>
+    <fieldset class="panel">
+      <legend>比較の種類</legend>
+      <div class="kinds">
+        <label><input type="radio" name="kind" value="weight" checked autocomplete="off">重さ</label>
+        <label><input type="radio" name="kind" value="volume" autocomplete="off">容量</label>
+        <label><input type="radio" name="kind" value="count" autocomplete="off">個数</label>
+      </div>
+    </fieldset>
+
+    <section class="panel card" id="card-a" aria-labelledby="a-title">
+      <h2><span id="a-title">商品A</span><span class="badge" id="a-badge" hidden>安い</span></h2>
+      <div class="field">
+        <label for="a-price">価格（税込・円）</label>
+        <input type="text" id="a-price" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="a-price-msg">
+        <p class="msg hint" id="a-price-msg"></p>
+      </div>
+      <div class="field unit-row">
+        <div>
+          <label for="a-amount">内容量</label>
+          <input type="text" id="a-amount" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="a-amount-msg">
+        </div>
+        <div>
+          <label for="a-unit" id="a-unit-label">単位</label>
+          <select id="a-unit" autocomplete="off"></select>
+          <span class="unit-fixed" id="a-unit-fixed" hidden></span>
+        </div>
+      </div>
+      <p class="msg hint" id="a-amount-msg"></p>
+      <div class="unit-price"><span class="label">単価</span><span class="value" id="a-unit-price">—</span></div>
+      <button type="button" id="a-clear">Aを消す</button>
+    </section>
+
+    <section class="panel card" id="card-b" aria-labelledby="b-title">
+      <h2><span id="b-title">商品B</span><span class="badge" id="b-badge" hidden>安い</span></h2>
+      <div class="field">
+        <label for="b-price">価格（税込・円）</label>
+        <input type="text" id="b-price" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="b-price-msg">
+        <p class="msg hint" id="b-price-msg"></p>
+      </div>
+      <div class="field unit-row">
+        <div>
+          <label for="b-amount">内容量</label>
+          <input type="text" id="b-amount" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="b-amount-msg">
+        </div>
+        <div>
+          <label for="b-unit" id="b-unit-label">単位</label>
+          <select id="b-unit" autocomplete="off"></select>
+          <span class="unit-fixed" id="b-unit-fixed" hidden></span>
+        </div>
+      </div>
+      <p class="msg hint" id="b-amount-msg"></p>
+      <div class="unit-price"><span class="label">単価</span><span class="value" id="b-unit-price">—</span></div>
+      <button type="button" id="b-clear">Bを消す</button>
+    </section>
+
+    <section class="panel result pending" id="result" aria-labelledby="result-title">
+      <h2 id="result-title">比較結果</h2>
+      <div aria-live="polite" aria-atomic="true">
+        <p class="verdict" id="verdict">価格と内容量を入力してください</p>
+        <p class="detail" id="verdict-detail"></p>
+      </div>
+    </section>
+
+    <button type="button" id="clear-all">両方消す</button>
+  </form>
+
+  <p class="status" id="offline-status" role="status" aria-live="polite">オフライン利用の準備中…</p>
+</main>
+<script src="./app.js"></script>
+</body>
+</html>
